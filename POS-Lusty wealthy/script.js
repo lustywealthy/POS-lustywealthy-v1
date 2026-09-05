@@ -88,12 +88,14 @@ function resetKeranjang() {
     const cashRec = document.getElementById('pos-cash-received');
     const cashChg = document.getElementById('pos-cash-change');
     const discInput = document.getElementById('pos-discount-event');
+    const poSlot = document.getElementById('pos-po-slot');
 
     if (custName) custName.value = '';
     if (custWa) custWa.value = '';
     if (cashRec) cashRec.value = '';
     if (cashChg) cashChg.value = '0';
     if (discInput) discInput.value = '0';
+    if (poSlot) poSlot.value = 'Langsung (Non-PO)';
 
     pilihMetodeBayar('cash');
     updateCartUI();
@@ -249,15 +251,18 @@ function bukaPreviewNota() {
     const notaId = "LW-" + Date.now().toString().slice(-6);
     const custNameInput = document.getElementById('pos-customer-name');
     const custWaInput = document.getElementById('pos-customer-wa');
+    const poSlotInput = document.getElementById('pos-po-slot');
 
     const customerName = custNameInput && custNameInput.value.trim() ? custNameInput.value.trim() : "Pelanggan Kasir";
     const customerWA = custWaInput && custWaInput.value.trim() ? custWaInput.value.trim() : "-";
+    const poSlot = poSlotInput ? poSlotInput.value : "Langsung (Non-PO)";
 
     currentTransactionData = {
         id: notaId,
         date: new Date().toLocaleString('id-ID'),
         customer: customerName,
         wa: customerWA,
+        poSlot: poSlot,
         method: selectedPaymentMethod === 'cash' ? 'Tunai' : 'QRIS',
         subtotal: totals.subtotal,
         diskon: totals.nominalDiskon,
@@ -275,6 +280,7 @@ function bukaPreviewNota() {
     document.getElementById('prev-id').innerText = currentTransactionData.id;
     document.getElementById('prev-customer').innerText = currentTransactionData.customer;
     document.getElementById('prev-wa').innerText = currentTransactionData.wa;
+    document.getElementById('prev-po-slot').innerText = currentTransactionData.poSlot;
     document.getElementById('prev-method').innerText = currentTransactionData.method;
     document.getElementById('prev-subtotal').innerText = "Rp " + totals.subtotal.toLocaleString('id-ID');
     document.getElementById('prev-disc-event').innerText = "-Rp " + totals.nominalDiskon.toLocaleString('id-ID');
@@ -316,6 +322,7 @@ function kirimNotaWA() {
     text += `No. Nota : ${d.id}\n`;
     text += `Tanggal  : ${d.date}\n`;
     text += `Pelanggan: ${d.customer}\n`;
+    text += `Slot PO  : ${d.poSlot}\n`;
     text += `Metode   : ${d.method}\n`;
     text += `------------------------------------------\n`;
     text += `*RINCIAN ITEM:*\n`;
@@ -371,6 +378,7 @@ async function eksekusiCetak(type) {
         date: currentTransactionData.date,
         customer: currentTransactionData.customer,
         wa: currentTransactionData.wa,
+        poSlot: currentTransactionData.poSlot,
         totalQty: totalQty,
         totalPrice: currentTransactionData.total,
         paymentMethod: currentTransactionData.method,
@@ -434,6 +442,7 @@ function kirimTeksKePrinterBT() {
     text += "Tgl : " + d.date + "\n";
     text += "Nota: " + d.id + "\n";
     text += "Plg : " + d.customer + "\n";
+    text += "PO  : " + d.poSlot + "\n";
     text += "Byr : " + d.method + "\n";
     text += "--------------------------------\n";
     
