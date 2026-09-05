@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS Online Kasir — Lusty Wealthy</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Library html2canvas untuk Konversi Nota ke JPG -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#364F26',
+                        bgLight: '#F3F2EB',
+                        accent: '#EAE8DF',
+                        cardBg: '#E2DFD2'
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-bgLight text-stone-800 antialiased min-h-screen flex flex-col md:flex-row md:h-screen md:overflow-hidden">
+
+    <!-- SEKSI KATALOG PRODUK (SISI KIRI) -->
+    <div class="w-full md:w-3/5 lg:w-2/3 flex flex-col border-b md:border-b-0 md:border-r border-[#D8D5C9] md:h-full">
+        <!-- Header Kasir -->
+        <header class="bg-white p-3.5 sm:p-4 border-b border-[#D8D5C9] flex justify-between items-center shadow-sm sticky top-0 z-20">
+            <div class="flex items-center space-x-2.5">
+                <img src="asset/logo.png" onerror="this.src='https://ui-avatars.com/api/?name=LW&background=364F26&color=fff&rounded=true'" alt="Logo" class="w-8 h-8 sm:w-10 sm:h-10 object-cover">
+                <div>
+                    <h1 class="font-serif font-bold text-base sm:text-lg text-primary leading-tight">Lusty Wealthy POS</h1>
+                    <p class="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Sync Google Sheets
+                    </p>
+                </div>
+            </div>
+            
+            <button id="btn-connect-bt" onclick="connectBluetoothPrinter()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition shadow-sm">
+                <span>📡</span> <span id="bt-status-text" class="hidden sm:inline">Hubungkan Printer BT</span>
+            </button>
+        </header>
+
+        <!-- Filter Kategori -->
+        <div class="p-3 sm:p-4 bg-bgLight border-b border-[#D8D5C9] flex gap-2 overflow-x-auto sticky top-[61px] z-10 md:static">
+            <button onclick="filterKategori('semua', this)" class="cat-btn bg-primary text-white text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap shadow-sm transition">Semua</button>
+            <button onclick="filterKategori('jahe', this)" class="cat-btn bg-white text-primary border border-[#D8D5C9] text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap hover:border-primary transition">Jahe Merah</button>
+            <button onclick="filterKategori('kopi', this)" class="cat-btn bg-white text-primary border border-[#D8D5C9] text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap hover:border-primary transition">Cold Brew Kopi</button>
+            <button onclick="filterKategori('non-kopi', this)" class="cat-btn bg-white text-primary border border-[#D8D5C9] text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap hover:border-primary transition">Non-Kopi</button>
+        </div>
+
+        <!-- Grid Katalog Produk -->
+        <div class="p-3 sm:p-4 md:overflow-y-auto md:flex-1 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 items-start" id="pos-product-grid">
+            <!-- Konten produk dirender via script.js -->
+        </div>
+    </div>
+
+    <!-- SEKSI RINGKASAN KERANJANG & CHECKOUT (SISI KANAN) -->
+    <div class="w-full md:w-2/5 lg:w-1/3 bg-white flex flex-col justify-between shadow-lg md:h-full md:overflow-y-auto">
+        
+        <!-- Header Ringkasan Keranjang -->
+        <div class="p-3.5 sm:p-4 border-b border-[#D8D5C9] flex justify-between items-center bg-[#F9F8F5] sticky top-0 z-10">
+            <h2 class="font-serif font-bold text-base text-primary flex items-center gap-2">
+                <span>🛒 Item Transaksi</span>
+                <span id="pos-total-qty-badge" class="bg-amber-400 text-stone-900 text-[10px] px-2 py-0.5 rounded-full font-bold">0</span>
+            </h2>
+            <button onclick="resetKeranjang()" class="text-xs text-red-600 hover:underline font-semibold">Kosongkan</button>
+        </div>
+
+        <!-- List Daftar Keranjang -->
+        <div class="p-3.5 sm:p-4 min-h-[120px] shrink-0 space-y-2" id="pos-cart-items">
+            <p class="text-xs text-stone-400 italic text-center py-6">Belum ada item dipilih.</p>
+        </div>
+
+        <!-- Form & Panel Pembayaran Kasir -->
+        <div class="p-4 bg-bgLight border-t border-[#D8D5C9] space-y-3.5 text-xs">
+
+            <!-- Indikator Banner Promo Thermal Bag -->
+            <div id="thermal-bag-banner" class="hidden bg-amber-100 border border-amber-300 text-amber-900 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-2 shadow-sm">
+                <span class="text-base">🛍️</span>
+                <span id="thermal-bag-text">Selamat! Gratis 1 Thermal Bag</span>
+            </div>
+
+            <!-- Informasi Pelanggan & WhatsApp -->
+            <div class="grid grid-cols-2 gap-2.5">
+                <div class="flex flex-col">
+                    <label class="text-[11px] font-bold text-stone-600 mb-1">Nama Pelanggan</label>
+                    <input type="text" id="pos-customer-name" placeholder="Pelanggan Kasir" class="w-full text-xs px-3 py-2 rounded-xl border border-[#D8D5C9] bg-white focus:outline-none focus:border-primary font-medium">
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-[11px] font-bold text-stone-600 mb-1">No. WA (Opsional)</label>
+                    <input type="text" id="pos-customer-wa" placeholder="08123456789" class="w-full text-xs px-3 py-2 rounded-xl border border-[#D8D5C9] bg-white focus:outline-none focus:border-primary font-medium">
+                </div>
+            </div>
+
+            <!-- Pilihan Pengiriman / Ongkir -->
+            <div>
+                <label class="block text-[11px] font-bold text-stone-600 mb-1">Pengiriman / Ongkir</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" onclick="setOngkir(0, this)" class="ongkir-btn py-2 px-1 border border-primary bg-primary text-white font-bold rounded-xl text-[11px] text-center transition">Tanpa Ongkir</button>
+                    <button type="button" onclick="setOngkir(5000, this)" class="ongkir-btn py-2 px-1 border border-[#D8D5C9] bg-white text-stone-700 font-bold rounded-xl text-[11px] text-center transition">Dekat (5rb)</button>
+                    <button type="button" onclick="setOngkir(10000, this)" class="ongkir-btn py-2 px-1 border border-[#D8D5C9] bg-white text-stone-700 font-bold rounded-xl text-[11px] text-center transition">Jauh (10rb)</button>
+                </div>
+            </div>
+
+            <!-- Input Diskon Custom -->
+            <div class="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-[#D8D5C9]">
+                <label class="text-[11px] font-bold text-stone-600">Diskon / Promo (%):</label>
+                <input type="number" id="pos-discount-event" min="0" max="100" value="0" oninput="hitungTotalAkhir()" class="w-16 text-center text-xs py-1 border border-[#D8D5C9] rounded-lg font-bold focus:outline-none focus:border-primary">
+            </div>
+
+            <!-- Pilihan Metode Pembayaran -->
+            <div>
+                <label class="block text-[11px] font-bold text-stone-600 mb-1">Metode Pembayaran</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" id="btn-pay-cash" onclick="pilihMetodeBayar('cash')" class="py-2 px-3 border border-primary bg-primary text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition">💵 Tunai</button>
+                    <button type="button" id="btn-pay-qris" onclick="pilihMetodeBayar('qris')" class="py-2 px-3 border border-[#D8D5C9] bg-white text-stone-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition">📱 QRIS</button>
+                </div>
+            </div>
+
+            <!-- Rincian Tagihan Belanja -->
+            <div class="p-3 bg-white rounded-xl border border-[#D8D5C9] space-y-1.5 text-[11px] text-stone-600">
+                <div class="flex justify-between items-center">
+                    <span>Subtotal Barang:</span>
+                    <span id="pos-subtotal" class="font-bold text-stone-800">Rp 0</span>
+                </div>
+                <div class="flex justify-between items-center text-emerald-700" id="row-diskon-event">
+                    <span>Diskon:</span>
+                    <span id="pos-diskon-event-text" class="font-bold">-Rp 0</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span>Ongkos Kirim:</span>
+                    <span id="pos-ongkir-text" class="font-bold text-stone-800">Rp 0</span>
+                </div>
+                <div class="flex justify-between items-center text-sm font-bold text-primary pt-2 border-t border-stone-200">
+                    <span>Total Tagihan:</span>
+                    <span id="pos-total-price" class="text-base">Rp 0</span>
+                </div>
+            </div>
+
+            <!-- Form Uang Tunai & Kembalian (Cash) -->
+            <div id="cash-payment-section" class="space-y-2 pt-1">
+                <div class="grid grid-cols-3 gap-1.5">
+                    <button onclick="setNominalBayar('pas')" class="bg-white border border-[#D8D5C9] text-[11px] font-bold py-1.5 rounded-xl hover:border-primary transition">Uang Pas</button>
+                    <button onclick="setNominalBayar(50000)" class="bg-white border border-[#D8D5C9] text-[11px] font-bold py-1.5 rounded-xl hover:border-primary transition">Rp 50rb</button>
+                    <button onclick="setNominalBayar(100000)" class="bg-white border border-[#D8D5C9] text-[11px] font-bold py-1.5 rounded-xl hover:border-primary transition">Rp 100rb</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-stone-600 mb-0.5">Diterima (Rp)</label>
+                        <input type="number" id="pos-cash-received" oninput="hitungKembalian()" placeholder="0" class="w-full text-xs px-2.5 py-1.5 rounded-xl border border-[#D8D5C9] font-bold bg-white focus:outline-none focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-stone-600 mb-0.5">Kembalian (Rp)</label>
+                        <input type="text" id="pos-cash-change" readonly value="0" class="w-full text-xs px-2.5 py-1.5 rounded-xl border border-[#D8D5C9] bg-stone-100 font-bold text-primary">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tombol Aksi Utama Kasir -->
+            <div class="pt-2">
+                <button onclick="bukaPreviewNota()" class="w-full bg-primary hover:bg-[#2A3E1E] text-white font-bold py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition">
+                    👁️ Preview & Cetak Nota
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP QRIS -->
+    <div id="modal-qris" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white max-w-sm w-full rounded-2xl p-5 shadow-2xl text-center space-y-4">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-serif font-bold text-primary text-base">Pembayaran QRIS</h3>
+                <button onclick="tutupModalQris()" class="text-stone-400 hover:text-stone-700 font-bold text-lg">✕</button>
+            </div>
+            <p class="text-xs text-stone-600">Silakan scan kode QRIS berikut untuk melakukan pembayaran:</p>
+            <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 flex justify-center">
+                <img src="asset/qris.jpg" onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=LUSTYWEALTHY_QRIS_PAYMENT'" alt="Barcode QRIS" class="w-48 h-48 object-contain">
+            </div>
+            <div class="text-left bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                <p class="text-[11px] text-emerald-800 font-bold">Total Tagihan:</p>
+                <p id="qris-modal-total" class="font-serif font-bold text-lg text-emerald-900">Rp 0</p>
+            </div>
+            <button onclick="tutupModalQris()" class="w-full bg-primary text-white py-2.5 rounded-xl text-xs font-bold hover:bg-[#2A3E1E] transition">
+                Selesai / Lanjutkan
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL PREVIEW NOTA THERMAL -->
+    <div id="modal-preview-receipt" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white max-w-sm w-full rounded-2xl p-4 shadow-2xl flex flex-col max-h-[92vh]">
+            <div class="flex justify-between items-center border-b pb-2 mb-2">
+                <h3 class="font-serif font-bold text-primary text-base">Preview Nota Kasir</h3>
+                <button onclick="tutupPreviewNota()" class="text-stone-400 hover:text-stone-700 font-bold text-lg">✕</button>
+            </div>
+
+            <!-- Tampilan Area Nota Thermal -->
+            <div class="flex-1 overflow-y-auto bg-stone-50 p-4 border rounded-xl font-mono text-[11px] leading-tight space-y-1.5" id="receipt-printable-area">
+                <div class="text-center">
+                    <strong class="text-sm">LUSTY WEALTHY</strong><br>
+                    Breathe slow, eat well, live light<br>
+                    Yogyakarta, Indonesia<br>
+                    --------------------------------
+                </div>
+                <div>
+                    Tgl : <span id="prev-date"></span><br>
+                    Nota: <span id="prev-id"></span><br>
+                    Plg : <span id="prev-customer"></span><br>
+                    WA  : <span id="prev-wa"></span><br>
+                    Byr : <span id="prev-method"></span><br>
+                    --------------------------------
+                </div>
+                <div id="prev-items-list" class="space-y-1"></div>
+                <div>
+                    --------------------------------<br>
+                    <div class="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span id="prev-subtotal">Rp 0</span>
+                    </div>
+                    <div class="flex justify-between" id="prev-row-disc-event">
+                        <span>Diskon:</span>
+                        <span id="prev-disc-event">-Rp 0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Ongkir:</span>
+                        <span id="prev-ongkir">Rp 0</span>
+                    </div>
+                    <div class="flex justify-between font-bold">
+                        <span>TOTAL:</span>
+                        <strong id="prev-total">Rp 0</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Bayar:</span>
+                        <span id="prev-bayar">Rp 0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Kembali:</span>
+                        <span id="prev-kembali">Rp 0</span>
+                    </div>
+                    <div id="prev-bonus-bag" class="hidden text-center pt-1 font-bold">
+                        *** FREE <span id="prev-bag-count">1</span> THERMAL BAG ***
+                    </div>
+                    --------------------------------<br>
+                </div>
+                <div class="text-center pt-1">
+                    Terima kasih telah memilih<br>
+                    produk kami!<br>
+                    Instagram: @lusty_wealthy<br><br>.
+                </div>
+            </div>
+
+            <!-- Tombol Aksi Cetak & Kirim -->
+            <div class="grid grid-cols-2 gap-2 pt-3 border-t mt-2">
+                <button onclick="eksekusiCetak('bluetooth')" class="bg-primary text-white font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1 shadow transition">
+                    📡 Print BT
+                </button>
+                <button onclick="eksekusiCetak('browser')" class="bg-stone-700 text-white font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1 shadow transition">
+                    🖨️ Print PDF
+                </button>
+                <button onclick="kirimNotaWA()" class="bg-emerald-600 text-white font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1 shadow transition">
+                    💬 Kirim WA
+                </button>
+                <button onclick="downloadNotaJPG()" class="bg-amber-600 text-white font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1 shadow transition">
+                    📸 Download JPG
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Script JS -->
+    <script src="script.js"></script>
+</body>
+</html>

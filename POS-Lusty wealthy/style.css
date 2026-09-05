@@ -1,0 +1,44 @@
+/* Custom CSS POS Kasir Lusty Wealthy */
+
+html, body {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Kustomisasi scrollbar internal agar rapi */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: #D8D5C9;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #364F26;
+}
+
+/* Format khusus cetak nota thermal 58mm via browser print */
+@media print {
+    body * { 
+        visibility: hidden !important; 
+    }
+    #receipt-printable-area, #receipt-printable-area * { 
+        visibility: visible !important; 
+    }
+    #receipt-printable-area {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 58mm !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #fff !important;
+        color: #000 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 11px !important;
+        line-height: 1.2 !important;
+    }
+    .no-print { 
+        display: none !important; 
+    }
+}
