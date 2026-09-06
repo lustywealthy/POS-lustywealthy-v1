@@ -1,6 +1,11 @@
-// Variable State & Konfigurasi POS
+// ==========================================================================
+// 1. KONFIGURASI UTAMA & MASTER PRODUK
+// ==========================================================================
+
+// URL Google Apps Script yang terhubung ke Google Spreadsheet
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhOvJICC0C095qSk0NcxHTXz18vVvfh7D7DPWAIeUgYv7W3d_GrCnwYuKHpDCteqI/exec";
 
+// Master Daftar Produk
 const products = [
     { id: 1, name: "Ginger Original", price: 10000, category: "jahe", img: "asset/ginger-ori.png" },
     { id: 2, name: "Ginger Latte", price: 12000, category: "jahe", img: "asset/ginger-latte.png" },
@@ -10,13 +15,18 @@ const products = [
     { id: 6, name: "Signature Chocolate", price: 18000, category: "non-kopi", img: "asset/signature-choco.png" }
 ];
 
+// Variable Penyimpanan Sementara (State)
 let cart = [];
 let selectedOngkir = 0;
 let selectedPaymentMethod = 'cash';
 let bluetoothCharacteristic = null;
 let currentTransactionData = null;
 
-// Render Katalog Produk
+// ==========================================================================
+// 2. RENDERING KATALOG & FILTER PRODUK
+// ==========================================================================
+
+// Menampilkan produk ke grid HTML
 function renderProducts(items) {
     const grid = document.getElementById('pos-product-grid');
     if (!grid) return;
@@ -33,7 +43,7 @@ function renderProducts(items) {
     `).join('');
 }
 
-// Filter Kategori Produk
+// Filter berdasarkan Kategori
 function filterKategori(cat, targetBtn) {
     document.querySelectorAll('.cat-btn').forEach(b => {
         b.classList.remove('bg-primary', 'text-white');
@@ -48,7 +58,10 @@ function filterKategori(cat, targetBtn) {
     else renderProducts(products.filter(p => p.category === cat));
 }
 
-// Logika Keranjang Belanja
+// ==========================================================================
+// 3. LOGIKA KERANJANG BELANJA
+// ==========================================================================
+
 function tambahKeKeranjang(id) {
     const item = products.find(p => p.id === id);
     const index = cart.findIndex(c => c.id === id);
@@ -132,7 +145,7 @@ function updateCartUI() {
     const badge = document.getElementById('pos-total-qty-badge');
     if (badge) badge.innerText = totalQty;
     
-    // Indikator Promo Free Thermal Bag (Kelipatan 10 Botol)
+    // Promo Bonus Thermal Bag (Kelipatan 10 Botol)
     const bagCount = Math.floor(totalQty / 10);
     const bagBanner = document.getElementById('thermal-bag-banner');
     const bagText = document.getElementById('thermal-bag-text');
@@ -148,12 +161,11 @@ function updateCartUI() {
     hitungTotalAkhir();
 }
 
-// Fungsi Utama Kalkulasi Tagihan & Diskon Fleksibel
+// Menghitung Kalkulasi Tagihan & Diskon
 function getCalculatedTotals() {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     
-    // Diskon kustom berdasarkan input persentase yang dimasukkan kasir
     const discInputElem = document.getElementById('pos-discount-event');
     const percentDiskon = discInputElem ? (parseFloat(discInputElem.value) || 0) : 0;
     const nominalDiskon = Math.round(subtotal * (percentDiskon / 100));
@@ -180,7 +192,6 @@ function hitungTotalAkhir() {
     hitungKembalian();
 }
 
-// Manajemen Metode Pembayaran
 function pilihMetodeBayar(method) {
     selectedPaymentMethod = method;
     const btnCash = document.getElementById('btn-pay-cash');
@@ -233,7 +244,10 @@ function hitungKembalian() {
     }
 }
 
-// Buka Modal Preview Nota Thermal
+// ==========================================================================
+// 4. PREVIEW NOTA & SINKRONISASI GOOGLE SHEETS
+// ==========================================================================
+
 function bukaPreviewNota() {
     if (cart.length === 0) return alert("Keranjang belanja masih kosong!");
 
@@ -275,7 +289,7 @@ function bukaPreviewNota() {
         cart: [...cart]
     };
 
-    // Populate Modal Preview HTML
+    // Render data ke elemen Modal Preview
     document.getElementById('prev-date').innerText = currentTransactionData.date;
     document.getElementById('prev-id').innerText = currentTransactionData.id;
     document.getElementById('prev-customer').innerText = currentTransactionData.customer;
@@ -313,10 +327,13 @@ function tutupPreviewNota() {
     document.getElementById('modal-preview-receipt').classList.add('hidden');
 }
 
-// Kirim Nota Teks Format Thermal ke WhatsApp Pelanggan
+// Kirim Teks Nota ke WA Pelanggan & Trigger Auto Sync Google Sheets
 function kirimNotaWA() {
     if (!currentTransactionData) return;
     const d = currentTransactionData;
+
+    // Trigger Sinkronisasi ke Google Sheets Otomatis
+    kirimKeGoogleSheets();
 
     let text = `*--- NOTA TRANSAKSI LUSTY WEALTHY ---*\n`;
     text += `No. Nota : ${d.id}\n`;
@@ -366,24 +383,12 @@ function downloadNotaJPG() {
     });
 }
 
-// Cetak & Sinkronisasi ke Google Sheets
+// Cetak & Auto Sync Google Sheets
 async function eksekusiCetak(type) {
     if (!currentTransactionData) return;
 
-    const totalQty = currentTransactionData.cart.reduce((s, i) => s + i.qty, 0);
-    const itemsSummary = currentTransactionData.cart.map(i => `${i.name} (x${i.qty})`).join(', ');
-
-    sendToGoogleSheets({
-        id: currentTransactionData.id,
-        date: currentTransactionData.date,
-        customer: currentTransactionData.customer,
-        wa: currentTransactionData.wa,
-        poSlot: currentTransactionData.poSlot,
-        totalQty: totalQty,
-        totalPrice: currentTransactionData.total,
-        paymentMethod: currentTransactionData.method,
-        itemsDetail: itemsSummary
-    });
+    // Trigger Sinkronisasi ke Google Sheets Otomatis
+    kirimKeGoogleSheets();
 
     if (type === 'bluetooth') {
         if (!bluetoothCharacteristic) {
@@ -398,8 +403,25 @@ async function eksekusiCetak(type) {
     }
 }
 
-async function sendToGoogleSheets(payload) {
-    if (!GOOGLE_SCRIPT_URL) return;
+// Fungsi utama mengirimkan data rekapan ke Google Spreadsheet via Fetch API[cite: 1]
+async function kirimKeGoogleSheets() {
+    if (!GOOGLE_SCRIPT_URL || !currentTransactionData) return;
+
+    const totalQty = currentTransactionData.cart.reduce((s, i) => s + i.qty, 0);
+    const itemsSummary = currentTransactionData.cart.map(i => `${i.name} (x${i.qty})`).join(', ');
+
+    const payload = {
+        id: currentTransactionData.id,
+        date: currentTransactionData.date,
+        customer: currentTransactionData.customer,
+        wa: currentTransactionData.wa,
+        poSlot: currentTransactionData.poSlot,
+        totalQty: totalQty,
+        totalPrice: currentTransactionData.total,
+        paymentMethod: currentTransactionData.method,
+        itemsDetail: itemsSummary
+    };
+
     try {
         await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
@@ -407,12 +429,16 @@ async function sendToGoogleSheets(payload) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        console.log("Data penjualan berhasil terkirim ke Google Sheets!");
     } catch (e) {
-        console.error("Gagal sinkronisasi data:", e);
+        console.error("Gagal mengirim data ke Google Sheets:", e);
     }
 }
 
-// Koneksi Bluetooth Printer
+// ==========================================================================
+// 5. PRINTER BLUETOOTH THERMAL
+// ==========================================================================
+
 async function connectBluetoothPrinter() {
     try {
         const device = await navigator.bluetooth.requestDevice({
@@ -473,5 +499,5 @@ function kirimTeksKePrinterBT() {
         .catch(err => alert("Gagal kirim data ke printer: " + err));
 }
 
-// Inisialisasi awal saat halaman dibuka
+// Inisialisasi awal saat web dibuka
 renderProducts(products);
