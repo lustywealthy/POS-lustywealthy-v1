@@ -4,7 +4,7 @@
 
 async function kirimKeGoogleSheets() {
     // Cek apakah URL Apps Script sudah diisi
-    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === "") {
+    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === "https://script.google.com/macros/s/AKfycbxdMHGGNf_5mkxzUjKYDxYfY63G7QF_YIDsbCdfvpGacKH-cNvQw2cGt5YIUZVho2mO/exec") {
         console.warn("URL Google Apps Script belum dikonfigurasi.");
         return;
     }
