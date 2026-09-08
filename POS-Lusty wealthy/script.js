@@ -1,7 +1,7 @@
 // ==========================================================================
 // 1. KONFIGURASI UTAMA
 // ==========================================================================
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGqbEHYo-MsHMnr-CanG0cXICZT4gSjtRRWcz78nT9wrDppLpWES5ClYN_1aL14HWCRA/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNDcdzAgh3w5L0BJ5e9v-eWQ0YQUhT__BsFxOoLKKrQoCltV40l3DRTp1pPy1FDu2A/exec";
 
 let products = [];
 let cart = [];
