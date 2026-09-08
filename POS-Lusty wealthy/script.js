@@ -1,48 +1,10 @@
-/// ==========================================================================
-// FUNGSI SINKRONISASI OTOMATIS KE GOOGLE SPREADSHEET
+// ==========================================================================
+// 1. KONFIGURASI UTAMA & MASTER DATA PRODUK
 // ==========================================================================
 
-async function kirimKeGoogleSheets() {
-    // Cek apakah URL Apps Script sudah diisi
-    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === "https://script.google.com/macros/s/AKfycbxdMHGGNf_5mkxzUjKYDxYfY63G7QF_YIDsbCdfvpGacKH-cNvQw2cGt5YIUZVho2mO/exec") {
-        console.warn("URL Google Apps Script belum dikonfigurasi.");
-        return;
-    }
+// URL Google Apps Script yang terhubung ke Google Spreadsheet
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxdMHGGNf_5mkxzUjKYDxYfY63G7QF_YIDsbCdfvpGacKH-cNvQw2cGt5YIUZVho2mO/exec";
 
-    if (!currentTransactionData) return;
-
-    // Hitung total kuantitas botol dan ringkasan nama item
-    const totalQty = currentTransactionData.cart.reduce((sum, item) => sum + item.qty, 0);
-    const itemsSummary = currentTransactionData.cart.map(item => `${item.name} (${item.qty}x)`).join(', ');
-
-    // Format data yang dikirim ke Google Sheets
-    const payload = {
-        id: currentTransactionData.id,
-        date: currentTransactionData.date,
-        customer: currentTransactionData.customer,
-        wa: currentTransactionData.wa,
-        poSlot: currentTransactionData.poSlot,
-        totalQty: totalQty,
-        totalPrice: currentTransactionData.total,
-        paymentMethod: currentTransactionData.method,
-        itemsDetail: itemsSummary
-    };
-
-    try {
-        // Mengirimkan data via HTTP POST
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors', // Mencegah error CORS di browser
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-        console.log("✅ Data transaksi berhasil dikirim ke Google Spreadsheet!");
-    } catch (error) {
-        console.error("❌ Gagal mengirim data ke Google Sheets:", error);
-        alert("Gagal menghubungkan ke Google Sheets. Pastikan koneksi internet stabil.");
-    }
-}
 // Master Daftar Produk
 const products = [
     { id: 1, name: "Ginger Original", price: 10000, category: "jahe", img: "asset/ginger-ori.png" },
@@ -97,7 +59,7 @@ function filterKategori(cat, targetBtn) {
 }
 
 // ==========================================================================
-// 3. LOGIKA KERANJANG BELANJA
+// 3. LOGIKA KERANJANG BELANJA & KALKULASI
 // ==========================================================================
 
 function tambahKeKeranjang(id) {
@@ -365,14 +327,47 @@ function tutupPreviewNota() {
     document.getElementById('modal-preview-receipt').classList.add('hidden');
 }
 
-// Kirim Teks Nota ke WA Pelanggan & Trigger Auto Sync Google Sheets
-function kirimNotaWA() {
+// Fungsi utama mengirimkan data rekapan ke Google Spreadsheet via Fetch API
+async function kirimKeGoogleSheets() {
+    if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL === "" || !currentTransactionData) return;
+
+    const totalQty = currentTransactionData.cart.reduce((s, i) => s + i.qty, 0);
+    const itemsSummary = currentTransactionData.cart.map(i => `${i.name} (${i.qty}x)`).join(', ');
+
+    const payload = {
+        id: currentTransactionData.id,
+        date: currentTransactionData.date,
+        customer: currentTransactionData.customer,
+        wa: currentTransactionData.wa,
+        poSlot: currentTransactionData.poSlot,
+        totalQty: totalQty,
+        totalPrice: currentTransactionData.total,
+        paymentMethod: currentTransactionData.method,
+        itemsDetail: itemsSummary
+    };
+
+    try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors', // Penting agar tidak diblokir privasi browser HP
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        console.log("Data berhasil dikirim ke Google Sheets!");
+    } catch (e) {
+        console.error("Gagal sinkron ke Google Sheets:", e);
+    }
+}
+
+// Tombol Kirim WA (Dibuat Async agar HP menyelesaikan kirim data dulu baru buka WA)
+async function kirimNotaWA() {
     if (!currentTransactionData) return;
     const d = currentTransactionData;
 
-    // Trigger Sinkronisasi ke Google Sheets Otomatis
-    kirimKeGoogleSheets();
+    // 1. Tunggu hingga proses rekap ke Google Sheets selesai sempurna
+    await kirimKeGoogleSheets();
 
+    // 2. Buat teks dan buka aplikasi WhatsApp
     let text = `*--- NOTA TRANSAKSI LUSTY WEALTHY ---*\n`;
     text += `No. Nota : ${d.id}\n`;
     text += `Tanggal  : ${d.date}\n`;
@@ -421,12 +416,12 @@ function downloadNotaJPG() {
     });
 }
 
-// Cetak & Auto Sync Google Sheets
+// Tombol Cetak / Print BT
 async function eksekusiCetak(type) {
     if (!currentTransactionData) return;
 
-    // Trigger Sinkronisasi ke Google Sheets Otomatis
-    kirimKeGoogleSheets();
+    // Tunggu hingga proses kirim data ke Google Sheets selesai
+    await kirimKeGoogleSheets();
 
     if (type === 'bluetooth') {
         if (!bluetoothCharacteristic) {
@@ -438,38 +433,6 @@ async function eksekusiCetak(type) {
         window.print();
         tutupPreviewNota();
         resetKeranjang();
-    }
-}
-
-// Fungsi utama mengirimkan data rekapan ke Google Spreadsheet via Fetch API[cite: 1]
-async function kirimKeGoogleSheets() {
-    if (!GOOGLE_SCRIPT_URL || !currentTransactionData) return;
-
-    const totalQty = currentTransactionData.cart.reduce((s, i) => s + i.qty, 0);
-    const itemsSummary = currentTransactionData.cart.map(i => `${i.name} (x${i.qty})`).join(', ');
-
-    const payload = {
-        id: currentTransactionData.id,
-        date: currentTransactionData.date,
-        customer: currentTransactionData.customer,
-        wa: currentTransactionData.wa,
-        poSlot: currentTransactionData.poSlot,
-        totalQty: totalQty,
-        totalPrice: currentTransactionData.total,
-        paymentMethod: currentTransactionData.method,
-        itemsDetail: itemsSummary
-    };
-
-    try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        console.log("Data penjualan berhasil terkirim ke Google Sheets!");
-    } catch (e) {
-        console.error("Gagal mengirim data ke Google Sheets:", e);
     }
 }
 
