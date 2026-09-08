@@ -1,7 +1,7 @@
 // ==========================================================================
 // 1. KONFIGURASI UTAMA
 // ==========================================================================
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7t_UnqwM32LDTElBGWsW-wdvdEXbLcMoUGMqtXAiDUyKfmvhMyX0IWp3nVJcpkm5s0Q/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGqbEHYo-MsHMnr-CanG0cXICZT4gSjtRRWcz78nT9wrDppLpWES5ClYN_1aL14HWCRA/exec";
 
 let products = [];
 let cart = [];
@@ -21,10 +21,17 @@ async function prosesLogin() {
     if (!u || !p) return alert("Isi username dan password!");
 
     try {
+        // Menggunakan URLSearchParams untuk menghindari blokir CORS
+        const formData = new URLSearchParams();
+        formData.append('action', 'login');
+        formData.append('username', u);
+        formData.append('password', p);
+
         const res = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'login', username: u, password: p })
+            body: formData
         });
+        
         const data = await res.json();
 
         if (data.status === 'success') {
@@ -35,10 +42,10 @@ async function prosesLogin() {
             alert(data.message);
         }
     } catch (e) {
+        console.error(e);
         alert("Gagal koneksi ke server/Google Sheets.");
     }
 }
-
 function prosesLogout() {
     localStorage.removeItem('pos_user');
     location.reload();
